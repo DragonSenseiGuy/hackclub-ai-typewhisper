@@ -1,0 +1,13 @@
+{
+  "id": "com.hackclub.typewhisper.hackclubai",
+  "name": "Hack Club AI",
+  "version": "0.1.0",
+  "minHostVersion": "1.2.2",
+  "sdkCompatibilityVersion": "v1",
+  "minOSVersion": "14.0",
+  "supportedArchitectures": ["arm64", "x86_64"],
+  "author": "Hack Club community",
+  "principalClass": "HackClubAIPlugin.HackClubAIPlugin",
+  "categories": ["llm", "transcription"],
+  "description": "Free Hack Club AI for chat completions, plus Replicate-proxied Whisper for dictation."
+}
