@@ -1,5 +1,4 @@
 import Foundation
-import TypeWhisperPluginSDK
 
 public struct HackClubReplicateOptions: Sendable {
     public var language: String?
@@ -18,7 +17,6 @@ public struct HackClubReplicateOptions: Sendable {
 }
 
 public enum HackClubReplicateError: Error, LocalizedError {
-    case missingToken
     case http(Int, String)
     case predictionFailed(String)
     case timeout
@@ -26,7 +24,6 @@ public enum HackClubReplicateError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .missingToken: return "A Replicate API token is required for transcription. Set it in the Hack Club AI plugin settings."
         case .http(let code, let body): return "Replicate proxy HTTP \(code): \(body)"
         case .predictionFailed(let msg): return "Replicate prediction failed: \(msg)"
         case .timeout: return "Replicate prediction timed out"
@@ -38,37 +35,20 @@ public enum HackClubReplicateError: Error, LocalizedError {
 public struct HackClubReplicateClient: Sendable {
     public static let baseURL = URL(string: "https://ai.hackclub.com")!
     public static let pollIntervalNs: UInt64 = 1_000_000_000
-    public static let timeoutSeconds: TimeInterval = 120
+    public static let timeoutSeconds: TimeInterval = 180
 
-    let keychain: KeychainServicing
-    let tokenKey: String
+    let token: String
     private let session: URLSession
 
-    public init(keychain: KeychainServicing, tokenKey: String, session: URLSession = .shared) {
-        self.keychain = keychain
-        self.tokenKey = tokenKey
+    public init(token: String, session: URLSession = .shared) {
+        self.token = token
         self.session = session
     }
 
-    public func setToken(_ token: String?) throws {
-        if let token, !token.isEmpty {
-            try keychain.set(token, forKey: tokenKey)
-        } else {
-            try keychain.remove(forKey: tokenKey)
-        }
-    }
-
-    public func hasToken() -> Bool {
-        (try? keychain.get(forKey: tokenKey))?.isEmpty == false
-    }
-
-    public func transcribe(audio: Data, mimeType: String = "audio/wav", options: HackClubReplicateOptions = .init()) async throws -> String {
-        guard let token = try? keychain.get(forKey: tokenKey), !token.isEmpty else {
-            throw HackClubReplicateError.missingToken
-        }
-        let dataURL = "data:\(mimeType);base64,\(audio.base64EncodedString())"
+    public func transcribe(wavData: Data, options: HackClubReplicateOptions = .init()) async throws -> String {
+        let dataURL = "data:audio/wav;base64,\(wavData.base64EncodedString())"
         var input: [String: Any] = ["audio": dataURL]
-        if let lang = options.language { input["language"] = lang }
+        if let lang = options.language, !lang.isEmpty { input["language"] = lang }
         if options.translate { input["translate"] = true }
         if let prompt = options.initialPrompt, !prompt.isEmpty { input["initial_prompt"] = prompt }
 
@@ -88,20 +68,26 @@ public struct HackClubReplicateClient: Sendable {
         try Self.checkStatus(createResponse, data: createData)
         let prediction = try JSONDecoder().decode(Prediction.self, from: createData)
 
-        return try await poll(predictionID: prediction.id, token: token)
+        return try await poll(predictionID: prediction.id)
     }
 
     public func cancel(predictionID: String) async {
-        guard let token = try? keychain.get(forKey: tokenKey), !token.isEmpty else { return }
-        let url = Self.baseURL.appendingPathComponent("replicate").appendingPathComponent("predictions").appendingPathComponent(predictionID).appendingPathComponent("cancel")
+        let url = Self.baseURL
+            .appendingPathComponent("replicate")
+            .appendingPathComponent("predictions")
+            .appendingPathComponent(predictionID)
+            .appendingPathComponent("cancel")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         _ = try? await session.data(for: request)
     }
 
-    private func poll(predictionID: String, token: String) async throws -> String {
-        let url = Self.baseURL.appendingPathComponent("replicate").appendingPathComponent("predictions").appendingPathComponent(predictionID)
+    private func poll(predictionID: String) async throws -> String {
+        let url = Self.baseURL
+            .appendingPathComponent("replicate")
+            .appendingPathComponent("predictions")
+            .appendingPathComponent(predictionID)
         let deadline = Date().addingTimeInterval(Self.timeoutSeconds)
 
         while Date() < deadline {
@@ -113,10 +99,13 @@ public struct HackClubReplicateClient: Sendable {
             let prediction = try JSONDecoder().decode(Prediction.self, from: data)
             switch prediction.status {
             case "succeeded":
-                guard let text = prediction.output?.transcription, !text.isEmpty else {
-                    throw HackClubReplicateError.predictionFailed("empty output")
+                if let text = prediction.output?.transcription, !text.isEmpty {
+                    return text
                 }
-                return text
+                if let plain = prediction.outputString, !plain.isEmpty {
+                    return plain
+                }
+                throw HackClubReplicateError.predictionFailed("empty output")
             case "failed", "canceled":
                 throw HackClubReplicateError.predictionFailed(prediction.error ?? prediction.status)
             default:
@@ -139,9 +128,27 @@ public struct HackClubReplicateClient: Sendable {
         let status: String
         let error: String?
         let output: Output?
+        let outputString: String?
 
-        struct Output: Decodable {
-            let transcription: String?
+        enum CodingKeys: String, CodingKey { case id, status, error, output }
+
+        struct Output: Decodable { let transcription: String? }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(String.self, forKey: .id)
+            status = try container.decode(String.self, forKey: .status)
+            error = try? container.decodeIfPresent(String.self, forKey: .error)
+            if let obj = try? container.decodeIfPresent(Output.self, forKey: .output) {
+                output = obj
+                outputString = nil
+            } else if let str = try? container.decodeIfPresent(String.self, forKey: .output) {
+                output = nil
+                outputString = str
+            } else {
+                output = nil
+                outputString = nil
+            }
         }
     }
 }

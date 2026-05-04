@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
@@ -12,18 +12,15 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/TypeWhisper/typewhisper-mac.git", branch: "main")
+        .package(url: "https://github.com/TypeWhisper/TypeWhisperPluginSDK.git", branch: "main")
     ],
     targets: [
         .target(
             name: "HackClubAIPlugin",
             dependencies: [
-                .product(name: "TypeWhisperPluginSDK", package: "typewhisper-mac")
+                .product(name: "TypeWhisperPluginSDK", package: "TypeWhisperPluginSDK")
             ],
-            path: "Sources/HackClubAIPlugin",
-            resources: [
-                .copy("../../Resources/manifest.json")
-            ]
+            path: "Sources/HackClubAIPlugin"
         )
     ]
 )
