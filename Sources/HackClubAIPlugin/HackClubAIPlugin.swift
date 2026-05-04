@@ -54,12 +54,15 @@ public final class HackClubAIPlugin: NSObject, TypeWhisperPlugin, LLMProviderPlu
 
     private func refreshChatModel() async {
         let client = HackClubChatClient()
-        if let model = try? await client.currentModel() {
-            stateLock.lock()
-            cachedModelID = model
-            stateLock.unlock()
-            currentHost()?.notifyCapabilitiesChanged()
-        }
+        guard let model = try? await client.currentModel() else { return }
+        setCachedModel(model)
+        currentHost()?.notifyCapabilitiesChanged()
+    }
+
+    private func setCachedModel(_ model: String) {
+        stateLock.lock()
+        cachedModelID = model
+        stateLock.unlock()
     }
 
     // MARK: - TranscriptionEnginePlugin

@@ -98,7 +98,7 @@ public struct HackClubChatClient: Sendable {
     }
 
     private func buildRequest(messages: [HackClubChatMessage], options: HackClubChatOptions, stream: Bool) throws -> URLRequest {
-        var url = Self.baseURL.appendingPathComponent("chat").appendingPathComponent("completions")
+        let url = Self.baseURL.appendingPathComponent("chat").appendingPathComponent("completions")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -111,7 +111,6 @@ public struct HackClubChatClient: Sendable {
         if let m = options.maxTokens { body["max_tokens"] = m }
         if let s = options.stop { body["stop"] = s }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        _ = url
         return request
     }
 
