@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import TypeWhisperPluginSDK
 
+@objc(HackClubAIPlugin)
 public final class HackClubAIPlugin: NSObject, TypeWhisperPlugin, LLMProviderPlugin, TranscriptionEnginePlugin, @unchecked Sendable {
     public static let pluginId = "com.hackclub.typewhisper.hackclubai"
     public static let pluginName = "Hack Club AI"

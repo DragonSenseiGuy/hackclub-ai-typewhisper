@@ -1,13 +1,17 @@
 {
   "id": "com.hackclub.typewhisper.hackclubai",
+  "slug": "hackclub-ai",
   "name": "Hack Club AI",
+  "author": "dragonsenseiguy",
+  "authorUrl": "https://github.com/DragonSenseiGuy",
   "version": "0.1.0",
-  "minHostVersion": "1.2.2",
-  "sdkCompatibilityVersion": "v1",
-  "minOSVersion": "14.0",
-  "supportedArchitectures": ["arm64", "x86_64"],
-  "author": "Hack Club community",
-  "principalClass": "HackClubAIPlugin.HackClubAIPlugin",
+  "description": "Free Hack Club AI for chat completions, plus Replicate-proxied Whisper for dictation.",
   "categories": ["llm", "transcription"],
-  "description": "Free Hack Club AI for chat completions, plus Replicate-proxied Whisper for dictation."
+  "platforms": ["mac"],
+  "minAppVersion": "1.0.0",
+  "license": "MIT",
+  "principalClass": "HackClubAIPlugin",
+  "homepage": "https://github.com/DragonSenseiGuy/hackclub-ai-typewhisper",
+  "sourceUrl": "https://github.com/DragonSenseiGuy/hackclub-ai-typewhisper",
+  "icon": "Sparkles"
 }

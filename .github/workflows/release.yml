@@ -83,6 +83,8 @@ jobs:
           # Patch CFBundleVersion from the tag for traceability.
           VERSION="${{ steps.tag.outputs.name }}"
           VERSION="${VERSION#v}"
+          BUNDLE_ID=$(python3 -c "import json; print(json.load(open('Resources/manifest.json'))['id'])")
+          PRINCIPAL=$(python3 -c "import json; print(json.load(open('Resources/manifest.json'))['principalClass'])")
           cat > "$BUNDLE/Contents/Info.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -90,14 +92,14 @@ jobs:
           <dict>
             <key>CFBundleDevelopmentRegion</key><string>en</string>
             <key>CFBundleExecutable</key><string>${PLUGIN_NAME}</string>
-            <key>CFBundleIdentifier</key><string>com.hackclub.typewhisper.hackclubai</string>
+            <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
             <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
             <key>CFBundleName</key><string>${PLUGIN_NAME}</string>
             <key>CFBundlePackageType</key><string>BNDL</string>
             <key>CFBundleShortVersionString</key><string>${VERSION}</string>
             <key>CFBundleVersion</key><string>${VERSION}</string>
             <key>LSMinimumSystemVersion</key><string>14.0</string>
-            <key>NSPrincipalClass</key><string>HackClubAIPlugin.HackClubAIPlugin</string>
+            <key>NSPrincipalClass</key><string>${PRINCIPAL}</string>
           </dict>
           </plist>
           PLIST
