@@ -16,12 +16,29 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       PLUGIN_NAME: HackClubAIPlugin
+      DEVELOPER_DIR: /Applications/Xcode_16.app/Contents/Developer
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: |
+          if [ -d "/Applications/Xcode_16.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.app
+          else
+            # Fall back to the newest available Xcode 16.x
+            CANDIDATE=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n1)
+            if [ -z "$CANDIDATE" ]; then
+              echo "No Xcode 16 installation found on runner" >&2
+              ls /Applications | grep -i xcode || true
+              exit 1
+            fi
+            sudo xcode-select -s "$CANDIDATE"
+            echo "DEVELOPER_DIR=$CANDIDATE/Contents/Developer" >> "$GITHUB_ENV"
+          fi
 
       - name: Resolve tag
         id: tag
