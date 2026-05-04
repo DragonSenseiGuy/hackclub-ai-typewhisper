@@ -66,11 +66,11 @@ jobs:
       - name: Locate built dylibs
         id: dylibs
         run: |
-          ARM64=$(find .build -path "*release*" -name "lib${PLUGIN_NAME}.dylib" -type f | grep arm64 | head -n1)
-          X86=$(find .build -path "*release*" -name "lib${PLUGIN_NAME}.dylib" -type f | grep x86_64 | head -n1)
+          ARM64=$(find .build -path "*apple-macosx/release/lib${PLUGIN_NAME}.dylib" -type f -not -path "*.dSYM/*" | grep arm64 | head -n1)
+          X86=$(find .build -path "*apple-macosx/release/lib${PLUGIN_NAME}.dylib" -type f -not -path "*.dSYM/*" | grep x86_64 | head -n1)
           echo "arm64=$ARM64" >> "$GITHUB_OUTPUT"
           echo "x86=$X86" >> "$GITHUB_OUTPUT"
-          ls -la "$ARM64" "$X86"
+          file "$ARM64" "$X86"
 
       - name: Assemble universal .bundle
         run: |
@@ -107,6 +107,10 @@ jobs:
           find "$BUNDLE" -maxdepth 4
           echo "--- universal check ---"
           lipo -info "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
+          file "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
+          # Sanity: must be a Mach-O dylib, not a dSYM companion.
+          file "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}" | grep -q "dynamically linked shared library" || {
+            echo "Bundle binary is not a real dylib"; exit 1; }
 
       - name: Zip bundle
         run: |
