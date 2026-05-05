@@ -115,7 +115,10 @@ jobs:
       - name: Zip bundle
         run: |
           ZIP="${PLUGIN_NAME}-${{ steps.tag.outputs.name }}.zip"
-          ditto -c -k --sequesterRsrc --keepParent "${PLUGIN_NAME}.bundle" "$ZIP"
+          # Strip any quarantine attrs we may have, then zip without
+          # AppleDouble metadata so Finder extracts a clean .bundle.
+          xattr -cr "${PLUGIN_NAME}.bundle" || true
+          ditto -c -k --keepParent "${PLUGIN_NAME}.bundle" "$ZIP"
           shasum -a 256 "$ZIP" | tee "${ZIP}.sha256"
           echo "ZIP=$ZIP" >> "$GITHUB_ENV"
 
