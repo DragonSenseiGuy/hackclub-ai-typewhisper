@@ -6,7 +6,7 @@
   "authorUrl": "https://github.com/DragonSenseiGuy",
   "version": "0.1.0",
   "description": "Free Hack Club AI for chat completions, plus Replicate-proxied Whisper for dictation.",
-  "categories": ["llm", "transcription"],
+  "categories": ["llm"],
   "platforms": ["mac"],
   "minAppVersion": "1.0.0",
   "license": "MIT",
