@@ -85,15 +85,10 @@ jobs:
           mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
           lipo -create "${{ steps.dylibs.outputs.arm64_plugin }}" "${{ steps.dylibs.outputs.x86_plugin }}" \
                -output "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
-          lipo -create "${{ steps.dylibs.outputs.arm64_sdk }}" "${{ steps.dylibs.outputs.x86_sdk }}" \
-               -output "$BUNDLE/Contents/MacOS/libTypeWhisperPluginSDK.dylib"
-          # Make the plugin's own install name match its actual location and
-          # confirm the SDK dependency resolves under @loader_path.
-          install_name_tool -id "@rpath/${PLUGIN_NAME}" "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
-          install_name_tool -change "@rpath/libTypeWhisperPluginSDK.dylib" \
-                                    "@loader_path/libTypeWhisperPluginSDK.dylib" \
-                                    "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
-          echo "--- linked dylibs after rewrite ---"
+          # Do NOT embed libTypeWhisperPluginSDK.dylib — the host already loads
+          # it and a second copy would create competing Swift types so protocol
+          # conformance lookups fail. The host's @rpath resolves the dependency.
+          echo "--- linked dylibs ---"
           otool -L "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
           cp Resources/manifest.json "$BUNDLE/Contents/Resources/manifest.json"
           # Patch CFBundleVersion from the tag for traceability.
@@ -106,16 +101,18 @@ jobs:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>CFBundleDevelopmentRegion</key><string>en</string>
-            <key>CFBundleExecutable</key><string>${PLUGIN_NAME}</string>
-            <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
-            <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-            <key>CFBundleName</key><string>${PLUGIN_NAME}</string>
-            <key>CFBundlePackageType</key><string>BNDL</string>
-            <key>CFBundleShortVersionString</key><string>${VERSION}</string>
-            <key>CFBundleVersion</key><string>${VERSION}</string>
-            <key>LSMinimumSystemVersion</key><string>14.0</string>
-            <key>NSPrincipalClass</key><string>${PRINCIPAL}</string>
+              <key>CFBundleIdentifier</key>
+              <string>${BUNDLE_ID}</string>
+              <key>CFBundleName</key>
+              <string>${PLUGIN_NAME}</string>
+              <key>CFBundleVersion</key>
+              <string>${VERSION}</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${VERSION}</string>
+              <key>CFBundlePackageType</key>
+              <string>BNDL</string>
+              <key>NSPrincipalClass</key>
+              <string>${PRINCIPAL}</string>
           </dict>
           </plist>
           PLIST
