@@ -66,19 +66,35 @@ jobs:
       - name: Locate built dylibs
         id: dylibs
         run: |
-          ARM64=$(find .build -path "*apple-macosx/release/lib${PLUGIN_NAME}.dylib" -type f -not -path "*.dSYM/*" | grep arm64 | head -n1)
-          X86=$(find .build -path "*apple-macosx/release/lib${PLUGIN_NAME}.dylib" -type f -not -path "*.dSYM/*" | grep x86_64 | head -n1)
-          echo "arm64=$ARM64" >> "$GITHUB_OUTPUT"
-          echo "x86=$X86" >> "$GITHUB_OUTPUT"
-          file "$ARM64" "$X86"
+          ARM64_PLUGIN=$(find .build -path "*apple-macosx/release/lib${PLUGIN_NAME}.dylib" -type f -not -path "*.dSYM/*" | grep arm64 | head -n1)
+          X86_PLUGIN=$(find .build -path "*apple-macosx/release/lib${PLUGIN_NAME}.dylib" -type f -not -path "*.dSYM/*" | grep x86_64 | head -n1)
+          ARM64_SDK=$(find .build -path "*apple-macosx/release/libTypeWhisperPluginSDK.dylib" -type f -not -path "*.dSYM/*" | grep arm64 | head -n1)
+          X86_SDK=$(find .build -path "*apple-macosx/release/libTypeWhisperPluginSDK.dylib" -type f -not -path "*.dSYM/*" | grep x86_64 | head -n1)
+          {
+            echo "arm64_plugin=$ARM64_PLUGIN"
+            echo "x86_plugin=$X86_PLUGIN"
+            echo "arm64_sdk=$ARM64_SDK"
+            echo "x86_sdk=$X86_SDK"
+          } >> "$GITHUB_OUTPUT"
+          file "$ARM64_PLUGIN" "$X86_PLUGIN" "$ARM64_SDK" "$X86_SDK"
 
       - name: Assemble universal .bundle
         run: |
           BUNDLE="${PLUGIN_NAME}.bundle"
           rm -rf "$BUNDLE"
           mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
-          lipo -create "${{ steps.dylibs.outputs.arm64 }}" "${{ steps.dylibs.outputs.x86 }}" \
+          lipo -create "${{ steps.dylibs.outputs.arm64_plugin }}" "${{ steps.dylibs.outputs.x86_plugin }}" \
                -output "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
+          lipo -create "${{ steps.dylibs.outputs.arm64_sdk }}" "${{ steps.dylibs.outputs.x86_sdk }}" \
+               -output "$BUNDLE/Contents/MacOS/libTypeWhisperPluginSDK.dylib"
+          # Make the plugin's own install name match its actual location and
+          # confirm the SDK dependency resolves under @loader_path.
+          install_name_tool -id "@rpath/${PLUGIN_NAME}" "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
+          install_name_tool -change "@rpath/libTypeWhisperPluginSDK.dylib" \
+                                    "@loader_path/libTypeWhisperPluginSDK.dylib" \
+                                    "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
+          echo "--- linked dylibs after rewrite ---"
+          otool -L "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
           cp Resources/manifest.json "$BUNDLE/Contents/Resources/manifest.json"
           # Patch CFBundleVersion from the tag for traceability.
           VERSION="${{ steps.tag.outputs.name }}"
